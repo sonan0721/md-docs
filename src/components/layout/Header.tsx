@@ -1,6 +1,7 @@
 "use client";
 
-import { Menu, Search, User } from "lucide-react";
+import { Menu, Search } from "lucide-react";
+import { UserMenu } from "./UserMenu";
 
 interface HeaderProps {
   onSearchOpen: () => void;
@@ -31,12 +32,10 @@ export function Header({ onSearchOpen, onMenuClick, showMenu = false }: HeaderPr
         >
           <Search size={16} />
           <span className="text-sm hidden sm:inline">Search</span>
-          <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border hidden sm:inline">⌘K</kbd>
+          <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border hidden sm:inline">Cmd K</kbd>
         </button>
 
-        <button className="p-2 rounded-md hover:bg-surface transition-colors">
-          <User size={20} />
-        </button>
+        <UserMenu />
       </div>
     </header>
   );

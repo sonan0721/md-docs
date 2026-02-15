@@ -50,3 +50,22 @@ export interface Backlink {
   title: string;
   context: string;
 }
+
+// GitHub OAuth Types
+export interface GitHubUser {
+  id: number;
+  login: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string;
+  html_url: string;
+}
+
+export interface AuthState {
+  user: GitHubUser | null;
+  isLoading: boolean;
+  error: string | null;
+  login: () => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
