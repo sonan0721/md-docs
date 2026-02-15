@@ -1,4 +1,4 @@
-import type { GitHubUser } from "@/types";
+import type { GitHubUser, GitHubRepo, GitHubContent } from "@/types";
 
 const GITHUB_API_BASE = "https://api.github.com";
 
@@ -80,6 +80,129 @@ export async function fetchGitHubUser(accessToken: string): Promise<GitHubUser> 
     email: data.email,
     avatar_url: data.avatar_url,
     html_url: data.html_url,
+  };
+}
+
+/**
+ * Fetch user's repositories
+ */
+export async function fetchUserRepos(token: string): Promise<GitHubRepo[]> {
+  const response = await fetch(
+    `${GITHUB_API_BASE}/user/repos?sort=updated&per_page=100`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch repositories");
+  }
+
+  const data = await response.json();
+
+  return (data as GitHubRepo[]).map((repo) => ({
+    id: repo.id,
+    name: repo.name,
+    full_name: repo.full_name,
+    private: repo.private,
+    description: repo.description,
+    default_branch: repo.default_branch,
+    updated_at: repo.updated_at,
+  }));
+}
+
+/**
+ * Fetch repository contents (files/folders)
+ */
+export async function fetchRepoContents(
+  token: string,
+  owner: string,
+  repo: string,
+  path?: string
+): Promise<GitHubContent[]> {
+  const endpoint = path
+    ? `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`
+    : `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents`;
+
+  const response = await fetch(endpoint, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return [];
+    }
+    throw new Error("Failed to fetch repository contents");
+  }
+
+  const data = await response.json();
+
+  // If path points to a file, GitHub returns an object, not an array
+  if (!Array.isArray(data)) {
+    const item = data as GitHubContent;
+    return [
+      {
+        name: item.name,
+        path: item.path,
+        type: item.type,
+        sha: item.sha,
+        size: item.size,
+        download_url: item.download_url,
+      },
+    ];
+  }
+
+  return (data as GitHubContent[]).map((item) => ({
+    name: item.name,
+    path: item.path,
+    type: item.type,
+    sha: item.sha,
+    size: item.size,
+    download_url: item.download_url,
+  }));
+}
+
+/**
+ * Fetch a single file's content
+ */
+export async function fetchFileContent(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string
+): Promise<{ content: string; sha: string }> {
+  const response = await fetch(
+    `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file content: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (data.type !== "file") {
+    throw new Error("Path does not point to a file");
+  }
+
+  // GitHub returns base64 encoded content
+  const content = Buffer.from(data.content, "base64").toString("utf-8");
+
+  return {
+    content,
+    sha: data.sha,
   };
 }
 

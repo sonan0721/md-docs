@@ -69,3 +69,33 @@ export interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
+
+// GitHub Repository Types
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  description: string | null;
+  default_branch: string;
+  updated_at: string;
+}
+
+export interface GitHubContent {
+  name: string;
+  path: string;
+  type: "file" | "dir";
+  sha: string;
+  size?: number;
+  download_url?: string;
+}
+
+// Repository Selection State
+export interface RepoState {
+  selectedRepo: { owner: string; repo: string } | null;
+  isLoading: boolean;
+  error: string | null;
+  selectRepo: (owner: string, repo: string) => void;
+  clearRepo: () => void;
+  loadFromStorage: () => void;
+}

@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
-import type { Document } from "@/types";
+import type { Document, GitHubContent } from "@/types";
 import { parseMarkdown } from "./markdown";
+import { fetchRepoContents, fetchFileContent } from "./github";
 
 export interface FolderNode {
   type: "folder" | "file";
@@ -11,7 +12,17 @@ export interface FolderNode {
   children?: FolderNode[];
 }
 
+export interface GitHubContext {
+  token: string;
+  owner: string;
+  repo: string;
+}
+
 const CONTENT_DIR = path.join(process.cwd(), "content");
+
+// ============================================
+// Local File System Functions (Fallback)
+// ============================================
 
 /**
  * Recursively finds all .md files in a directory
@@ -48,9 +59,9 @@ function pathToSlug(filePath: string): string {
 }
 
 /**
- * Gets a document by its slug
+ * Gets a document by its slug from local filesystem
  */
-export async function getDocumentBySlug(
+async function getLocalDocumentBySlug(
   slug: string
 ): Promise<Document | undefined> {
   const filePath = path.join(CONTENT_DIR, `${slug}.md`);
@@ -72,15 +83,15 @@ export async function getDocumentBySlug(
 }
 
 /**
- * Gets all documents
+ * Gets all documents from local filesystem
  */
-export async function getAllDocuments(): Promise<Document[]> {
+async function getLocalAllDocuments(): Promise<Document[]> {
   const files = findMarkdownFiles(CONTENT_DIR);
   const documents: Document[] = [];
 
   for (const file of files) {
     const slug = pathToSlug(file);
-    const doc = await getDocumentBySlug(slug);
+    const doc = await getLocalDocumentBySlug(slug);
     if (doc) {
       documents.push(doc);
     }
@@ -89,11 +100,127 @@ export async function getAllDocuments(): Promise<Document[]> {
   return documents;
 }
 
+// ============================================
+// GitHub API Functions
+// ============================================
+
+/**
+ * Recursively finds all .md files in a GitHub repository
+ */
+async function findGitHubMarkdownFiles(
+  ctx: GitHubContext,
+  path: string = "",
+  basePath: string = ""
+): Promise<string[]> {
+  const files: string[] = [];
+
+  try {
+    const contents = await fetchRepoContents(ctx.token, ctx.owner, ctx.repo, path || undefined);
+
+    for (const item of contents) {
+      const relativePath = basePath ? `${basePath}/${item.name}` : item.name;
+
+      if (item.type === "dir") {
+        const subFiles = await findGitHubMarkdownFiles(ctx, item.path, relativePath);
+        files.push(...subFiles);
+      } else if (item.name.endsWith(".md")) {
+        files.push(relativePath);
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to fetch contents at path "${path}":`, err);
+  }
+
+  return files;
+}
+
+/**
+ * Gets a document by its slug from GitHub
+ */
+async function getGitHubDocumentBySlug(
+  ctx: GitHubContext,
+  slug: string
+): Promise<Document | undefined> {
+  try {
+    const filePath = `${slug}.md`;
+    const { content: raw } = await fetchFileContent(
+      ctx.token,
+      ctx.owner,
+      ctx.repo,
+      filePath
+    );
+
+    const parsed = await parseMarkdown(raw);
+
+    return {
+      slug,
+      path: filePath,
+      title: parsed.frontmatter.title,
+      content: parsed.content,
+      frontmatter: parsed.frontmatter,
+    };
+  } catch (err) {
+    console.error(`Failed to fetch document "${slug}" from GitHub:`, err);
+    return undefined;
+  }
+}
+
+/**
+ * Gets all documents from GitHub repository
+ */
+async function getGitHubAllDocuments(ctx: GitHubContext): Promise<Document[]> {
+  const files = await findGitHubMarkdownFiles(ctx);
+  const documents: Document[] = [];
+
+  for (const file of files) {
+    const slug = pathToSlug(file);
+    const doc = await getGitHubDocumentBySlug(ctx, slug);
+    if (doc) {
+      documents.push(doc);
+    }
+  }
+
+  return documents;
+}
+
+// ============================================
+// Public API (with GitHub context support)
+// ============================================
+
+/**
+ * Gets a document by its slug
+ * Uses GitHub API if context is provided, otherwise falls back to local filesystem
+ */
+export async function getDocumentBySlug(
+  slug: string,
+  githubContext?: GitHubContext
+): Promise<Document | undefined> {
+  if (githubContext) {
+    return getGitHubDocumentBySlug(githubContext, slug);
+  }
+  return getLocalDocumentBySlug(slug);
+}
+
+/**
+ * Gets all documents
+ * Uses GitHub API if context is provided, otherwise falls back to local filesystem
+ */
+export async function getAllDocuments(
+  githubContext?: GitHubContext
+): Promise<Document[]> {
+  if (githubContext) {
+    return getGitHubAllDocuments(githubContext);
+  }
+  return getLocalAllDocuments();
+}
+
 /**
  * Builds a folder tree structure from documents
  */
-export async function getDocumentTree(): Promise<FolderNode[]> {
-  const documents = await getAllDocuments();
+export async function getDocumentTree(
+  githubContext?: GitHubContext
+): Promise<FolderNode[]> {
+  const documents = await getAllDocuments(githubContext);
   const tree: FolderNode[] = [];
 
   // Helper to find or create a folder node
@@ -150,9 +277,10 @@ export async function getDocumentTree(): Promise<FolderNode[]> {
  * Gets child documents for a given slug (documents in subdirectory)
  */
 export async function getChildDocuments(
-  slug: string
+  slug: string,
+  githubContext?: GitHubContext
 ): Promise<{ slug: string; title: string }[]> {
-  const documents = await getAllDocuments();
+  const documents = await getAllDocuments(githubContext);
   const prefix = slug + "/";
 
   return documents
@@ -161,4 +289,28 @@ export async function getChildDocuments(
       slug: doc.slug,
       title: doc.title,
     }));
+}
+
+/**
+ * Fetches markdown files list from GitHub (for use by client-side APIs)
+ */
+export async function getGitHubMarkdownFiles(
+  ctx: GitHubContext
+): Promise<GitHubContent[]> {
+  const allFiles: GitHubContent[] = [];
+
+  async function traverse(path: string = "") {
+    const contents = await fetchRepoContents(ctx.token, ctx.owner, ctx.repo, path || undefined);
+
+    for (const item of contents) {
+      if (item.type === "dir") {
+        await traverse(item.path);
+      } else if (item.name.endsWith(".md")) {
+        allFiles.push(item);
+      }
+    }
+  }
+
+  await traverse();
+  return allFiles;
 }
