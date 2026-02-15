@@ -207,6 +207,72 @@ export async function fetchFileContent(
 }
 
 /**
+ * Update or create a file in the repository
+ * @param token - GitHub access token
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param path - Path to file in repository
+ * @param content - File content (will be base64 encoded)
+ * @param message - Commit message
+ * @param sha - Current file SHA (required for updates, not needed for new files)
+ * @returns Object containing new file SHA and commit SHA
+ */
+export async function updateFile(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  content: string,
+  message: string,
+  sha?: string
+): Promise<{ sha: string; commit: { sha: string } }> {
+  // Base64 encode the content
+  const encodedContent = Buffer.from(content, "utf-8").toString("base64");
+
+  const body: {
+    message: string;
+    content: string;
+    sha?: string;
+  } = {
+    message,
+    content: encodedContent,
+  };
+
+  // SHA is required for updates but not for new files
+  if (sha) {
+    body.sha = sha;
+  }
+
+  const response = await fetch(
+    `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.message || `Failed to update file: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  const data = await response.json();
+
+  return {
+    sha: data.content.sha,
+    commit: {
+      sha: data.commit.sha,
+    },
+  };
+}
+
+/**
  * Cookie name for storing GitHub access token
  */
 export const AUTH_COOKIE_NAME = "github_access_token";
