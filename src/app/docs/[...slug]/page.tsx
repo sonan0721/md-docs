@@ -5,7 +5,6 @@ import {
   getDocumentBySlug,
   getAllDocuments,
   getDocumentTree,
-  type FolderNode,
 } from "@/lib/content";
 import { parseMarkdown } from "@/lib/markdown";
 
@@ -13,13 +12,6 @@ interface PageProps {
   params: Promise<{
     slug: string[];
   }>;
-}
-
-interface FolderItem {
-  name: string;
-  type: "folder" | "file";
-  slug?: string;
-  children?: FolderItem[];
 }
 
 // Generate static params for SSG
@@ -46,9 +38,9 @@ export default async function DocumentPage({ params }: PageProps) {
   const parsedDocument = await parseMarkdown(document.content);
 
   // Get document tree for sidebar
-  const documentTree = await getDocumentTree();
+  const tree = await getDocumentTree();
 
-  // Get all documents to find child documents
+  // Get all documents to find child documents and extract tags
   const allDocuments = await getAllDocuments();
 
   // Find child documents (documents that start with current slug + /)
@@ -66,12 +58,9 @@ export default async function DocumentPage({ params }: PageProps) {
     new Set(allDocuments.flatMap((doc) => doc.frontmatter.tags || []))
   );
 
-  // Convert document tree to sidebar format
-  const folders = documentTree.map((node) => convertTreeNodeToFolderItem(node));
-
   return (
     <Shell
-      folders={folders}
+      tree={tree}
       tags={allTags}
       toc={parsedDocument.toc}
       backlinks={[]}
@@ -80,14 +69,4 @@ export default async function DocumentPage({ params }: PageProps) {
       <DocumentView document={parsedDocument} childDocs={childDocs} />
     </Shell>
   );
-}
-
-// Helper function to convert FolderNode to FolderItem format expected by Sidebar
-function convertTreeNodeToFolderItem(node: FolderNode): FolderItem {
-  return {
-    name: node.name || node.title,
-    type: node.type,
-    slug: node.slug,
-    children: node.children?.map((child) => convertTreeNodeToFolderItem(child)),
-  };
 }

@@ -1,28 +1,5 @@
-"use client";
-
 import { Shell } from "@/components/layout/Shell";
-
-// Sample data for demonstration
-const sampleFolders = [
-  {
-    name: "Getting Started",
-    type: "folder" as const,
-    children: [
-      { name: "Introduction", type: "file" as const, slug: "getting-started/introduction" },
-      { name: "Installation", type: "file" as const, slug: "getting-started/installation" },
-    ],
-  },
-  {
-    name: "Guides",
-    type: "folder" as const,
-    children: [
-      { name: "Basic Usage", type: "file" as const, slug: "guides/basic-usage" },
-      { name: "Advanced Topics", type: "file" as const, slug: "guides/advanced-topics" },
-    ],
-  },
-];
-
-const sampleTags = ["documentation", "wiki", "markdown", "notes"];
+import { getDocumentTree, getAllDocuments } from "@/lib/content";
 
 const sampleToc = [
   { id: "introduction", text: "Introduction", level: 1 },
@@ -35,11 +12,20 @@ const sampleBacklinks = [
   { slug: "getting-started/introduction", title: "Introduction", context: "This page links to..." },
 ];
 
-export default function Home() {
+export default async function Home() {
+  // Fetch document tree for sidebar
+  const tree = await getDocumentTree();
+
+  // Get all documents to extract tags
+  const allDocuments = await getAllDocuments();
+  const tags = Array.from(
+    new Set(allDocuments.flatMap((doc) => doc.frontmatter.tags || []))
+  );
+
   return (
     <Shell
-      folders={sampleFolders}
-      tags={sampleTags}
+      tree={tree}
+      tags={tags}
       toc={sampleToc}
       backlinks={sampleBacklinks}
       showRightPanel={true}

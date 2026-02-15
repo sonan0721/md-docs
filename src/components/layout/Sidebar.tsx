@@ -1,21 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { ChevronRight, FileText, Folder, Inbox, Tag } from "lucide-react";
-
-interface FolderItem {
-  name: string;
-  type: "folder" | "file";
-  children?: FolderItem[];
-  slug?: string;
-}
+import type { FolderNode } from "@/lib/content";
 
 interface SidebarProps {
-  folders?: FolderItem[];
+  tree?: FolderNode[];
   tags?: string[];
 }
 
-export function Sidebar({ folders = [], tags = [] }: SidebarProps) {
+export function Sidebar({ tree = [], tags = [] }: SidebarProps) {
+  const pathname = usePathname();
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
   const toggleFolder = (folderPath: string) => {
@@ -30,11 +27,12 @@ export function Sidebar({ folders = [], tags = [] }: SidebarProps) {
     });
   };
 
-  const renderFolderItem = (item: FolderItem, path: string = "") => {
-    const fullPath = path ? `${path}/${item.name}` : item.name;
+  const renderTreeNode = (node: FolderNode, path: string = "") => {
+    const nodeName = node.name || node.title;
+    const fullPath = path ? `${path}/${nodeName}` : nodeName;
     const isCollapsed = collapsedFolders.has(fullPath);
 
-    if (item.type === "folder") {
+    if (node.type === "folder") {
       return (
         <div key={fullPath}>
           <button
@@ -46,26 +44,34 @@ export function Sidebar({ folders = [], tags = [] }: SidebarProps) {
               className={`text-muted transition-transform ${!isCollapsed ? "rotate-90" : ""}`}
             />
             <Folder size={16} className="text-muted" />
-            <span className="text-sm text-text truncate">{item.name}</span>
+            <span className="text-sm text-text truncate">{node.title}</span>
           </button>
-          {!isCollapsed && item.children && (
+          {!isCollapsed && node.children && (
             <div className="ml-4 border-l border-border pl-2">
-              {item.children.map((child) => renderFolderItem(child, fullPath))}
+              {node.children.map((child) => renderTreeNode(child, fullPath))}
             </div>
           )}
         </div>
       );
     }
 
+    // File node
+    const href = `/docs/${node.slug}`;
+    const isActive = pathname === href;
+
     return (
-      <a
-        key={fullPath}
-        href={`/docs/${item.slug || fullPath}`}
-        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface transition-colors ml-5"
+      <Link
+        key={node.slug || fullPath}
+        href={href}
+        className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ml-5 ${
+          isActive
+            ? "bg-accent/10 text-accent"
+            : "hover:bg-surface text-text"
+        }`}
       >
-        <FileText size={16} className="text-muted" />
-        <span className="text-sm text-text truncate">{item.name}</span>
-      </a>
+        <FileText size={16} className={isActive ? "text-accent" : "text-muted"} />
+        <span className="text-sm truncate">{node.title}</span>
+      </Link>
     );
   };
 
@@ -73,13 +79,17 @@ export function Sidebar({ folders = [], tags = [] }: SidebarProps) {
     <aside className="w-sidebar h-[calc(100vh-3.5rem)] border-r border-border bg-background overflow-y-auto p-3">
       {/* Inbox Quick Access */}
       <div className="mb-4">
-        <a
+        <Link
           href="/inbox"
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface transition-colors"
+          className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ${
+            pathname === "/inbox"
+              ? "bg-accent/10 text-accent"
+              : "hover:bg-surface text-text"
+          }`}
         >
-          <Inbox size={16} className="text-muted" />
-          <span className="text-sm text-text">Inbox</span>
-        </a>
+          <Inbox size={16} className={pathname === "/inbox" ? "text-accent" : "text-muted"} />
+          <span className="text-sm">Inbox</span>
+        </Link>
       </div>
 
       {/* Folder Structure */}
@@ -87,8 +97,8 @@ export function Sidebar({ folders = [], tags = [] }: SidebarProps) {
         <h3 className="text-xs font-medium text-muted uppercase tracking-wider px-2 mb-2">
           Documents
         </h3>
-        {folders.length > 0 ? (
-          <nav>{folders.map((folder) => renderFolderItem(folder))}</nav>
+        {tree.length > 0 ? (
+          <nav>{tree.map((node) => renderTreeNode(node))}</nav>
         ) : (
           <p className="text-sm text-muted px-2">No documents yet</p>
         )}
@@ -102,14 +112,18 @@ export function Sidebar({ folders = [], tags = [] }: SidebarProps) {
         {tags.length > 0 ? (
           <div className="flex flex-wrap gap-1 px-2">
             {tags.map((tag) => (
-              <a
+              <Link
                 key={tag}
                 href={`/tags/${tag}`}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface text-xs text-muted hover:text-text transition-colors"
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
+                  pathname === `/tags/${tag}`
+                    ? "bg-accent text-white"
+                    : "bg-surface text-muted hover:text-text"
+                }`}
               >
                 <Tag size={12} />
                 {tag}
-              </a>
+              </Link>
             ))}
           </div>
         ) : (

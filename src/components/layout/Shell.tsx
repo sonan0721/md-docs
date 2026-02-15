@@ -6,6 +6,7 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { RightPanel } from "./RightPanel";
 import { useIsTablet, useIsLaptop } from "@/hooks/useMediaQuery";
+import type { FolderNode } from "@/lib/content";
 
 interface TocItem {
   id: string;
@@ -19,20 +20,13 @@ interface BacklinkItem {
   context: string;
 }
 
-interface FolderItem {
-  name: string;
-  type: "folder" | "file";
-  children?: FolderItem[];
-  slug?: string;
-}
-
 interface ShellProps {
   children: ReactNode;
   showRightPanel?: boolean;
   toc?: TocItem[];
   backlinks?: BacklinkItem[];
   activeId?: string;
-  folders?: FolderItem[];
+  tree?: FolderNode[];
   tags?: string[];
 }
 
@@ -42,7 +36,7 @@ export function Shell({
   toc = [],
   backlinks = [],
   activeId,
-  folders = [],
+  tree = [],
   tags = [],
 }: ShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -102,12 +96,12 @@ export function Shell({
                 >
                   <X size={20} />
                 </button>
-                <Sidebar folders={folders} tags={tags} />
+                <Sidebar tree={tree} tags={tags} />
               </div>
             </div>
           </>
         ) : (
-          <Sidebar folders={folders} tags={tags} />
+          <Sidebar tree={tree} tags={tags} />
         )}
 
         {/* Main Content */}
