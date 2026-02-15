@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, ReactNode } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { RightPanel } from "./RightPanel";
+import { SearchModal } from "@/components/search/SearchModal";
 import { useIsTablet, useIsLaptop } from "@/hooks/useMediaQuery";
+import { useSearchKeyboard, useSearchIndex } from "@/hooks/useSearch";
+import { useSearchStore } from "@/stores/search";
 import type { FolderNode } from "@/lib/content";
+import type { Document } from "@/types";
 
 interface TocItem {
   id: string;
@@ -28,6 +32,7 @@ interface ShellProps {
   activeId?: string;
   tree?: FolderNode[];
   tags?: string[];
+  documents?: Document[];
 }
 
 export function Shell({
@@ -38,17 +43,29 @@ export function Shell({
   activeId,
   tree = [],
   tags = [],
+  documents = [],
 }: ShellProps) {
-  const [searchOpen, setSearchOpen] = useState(false);
+  const { openSearch, closeSearch, loadRecentSearches } = useSearchStore();
+
+  // Initialize keyboard shortcuts for search
+  useSearchKeyboard();
+
+  // Index documents for search
+  useSearchIndex(documents);
+
+  // Load recent searches on mount
+  useEffect(() => {
+    loadRecentSearches();
+  }, [loadRecentSearches]);
+
+  // Sidebar state (for mobile/tablet)
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isTablet = useIsTablet();
   const isLaptop = useIsLaptop();
 
   const handleSearchOpen = () => {
-    setSearchOpen(true);
-    // TODO: Implement search modal
-    console.log("Search opened");
+    openSearch();
   };
 
   const handleMenuClick = () => {
@@ -117,28 +134,8 @@ export function Shell({
         )}
       </div>
 
-      {/* Search Modal Placeholder */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20"
-          onClick={() => setSearchOpen(false)}
-        >
-          <div
-            className="bg-background border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <input
-              type="text"
-              placeholder="Search documentation..."
-              className="w-full px-4 py-2 bg-surface border border-border rounded-md text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent"
-              autoFocus
-            />
-            <p className="text-sm text-muted mt-2">
-              Start typing to search...
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Search Modal */}
+      <SearchModal onClose={closeSearch} />
     </div>
   );
 }

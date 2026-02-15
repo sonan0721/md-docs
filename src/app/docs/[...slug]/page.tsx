@@ -76,6 +76,7 @@ export default async function DocumentPage({ params }: PageProps) {
       toc={parsedDocument.toc}
       backlinks={backlinks}
       showRightPanel={true}
+      documents={allDocuments}
     >
       <DocumentView document={parsedDocument} slug={slugPath} childDocs={childDocs} />
     </Shell>

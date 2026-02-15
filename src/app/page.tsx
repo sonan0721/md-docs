@@ -29,6 +29,7 @@ export default async function Home() {
       toc={sampleToc}
       backlinks={sampleBacklinks}
       showRightPanel={true}
+      documents={allDocuments}
     >
       <h1 id="introduction" className="text-3xl font-bold text-text mb-4">
         Personal Wiki
