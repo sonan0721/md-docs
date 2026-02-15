@@ -2,6 +2,8 @@ import matter from "gray-matter";
 import { remark } from "remark";
 import html from "remark-html";
 import type { DocumentFrontmatter } from "@/types";
+import { parseBBCode } from "./bbcode";
+import { renderBacklinks } from "./backlinks";
 
 export interface TocItem {
   id: string;
@@ -62,14 +64,51 @@ function addHeadingIds(htmlContent: string): string {
 }
 
 /**
- * Parses raw markdown content into a structured document
+ * Options for parseMarkdown
  */
-export async function parseMarkdown(rawContent: string): Promise<ParsedDocument> {
+export interface ParseMarkdownOptions {
+  /** All documents for backlink resolution */
+  allDocs?: { slug: string; title: string }[];
+  /** Enable BBCode processing (default: true) */
+  processBBCode?: boolean;
+  /** Enable backlink processing (default: true) */
+  processBacklinks?: boolean;
+}
+
+/**
+ * Parses raw markdown content into a structured document
+ * @param rawContent - Raw markdown with optional frontmatter
+ * @param options - Parsing options for BBCode and backlinks
+ */
+export async function parseMarkdown(
+  rawContent: string,
+  options: ParseMarkdownOptions = {}
+): Promise<ParsedDocument> {
+  const {
+    allDocs = [],
+    processBBCode = true,
+    processBacklinks = true,
+  } = options;
+
   // Extract frontmatter and content using gray-matter
   const { data, content } = matter(rawContent);
 
+  // Process BBCode first (before markdown conversion)
+  let processedText = content;
+  if (processBBCode) {
+    processedText = parseBBCode(processedText);
+  }
+
+  // Process backlinks (before markdown conversion)
+  if (processBacklinks && allDocs.length > 0) {
+    processedText = renderBacklinks(processedText, allDocs);
+  }
+
   // Convert markdown to HTML using remark
-  const processedContent = await remark().use(html).process(content);
+  // Note: remark-html will preserve existing HTML tags from BBCode/backlinks
+  const processedContent = await remark()
+    .use(html, { sanitize: false }) // Don't sanitize to preserve BBCode HTML
+    .process(processedText);
   let htmlContent = processedContent.toString();
 
   // Extract ToC before adding IDs (to get clean text)

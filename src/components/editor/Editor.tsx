@@ -12,19 +12,26 @@ import { useCallback, useEffect } from "react";
 import { markdownToTipTap, tipTapToMarkdown } from "@/lib/editor";
 import { FloatingToolbar } from "./FloatingToolbar";
 import { SlashCommand } from "./SlashCommand";
+import { BacklinkSuggestion } from "./BacklinkSuggestion";
 
 interface EditorProps {
   content: string; // Initial markdown content
   onChange?: (markdown: string) => void;
   editable?: boolean;
   placeholder?: string;
+  /** Available documents for backlink suggestions */
+  documents?: { slug: string; title: string }[];
+  /** Callback when user wants to create a new document from backlink */
+  onCreateDocument?: (title: string) => void;
 }
 
 export function Editor({
   content,
   onChange,
   editable = true,
-  placeholder = "Start writing... Type '/' for commands",
+  placeholder = "Start writing... Type '/' for commands, '[[' for links",
+  documents = [],
+  onCreateDocument,
 }: EditorProps) {
   const editor = useEditor({
     extensions: [
@@ -146,6 +153,11 @@ export function Editor({
     <div className="relative">
       <FloatingToolbar editor={editor} onLinkClick={setLink} />
       <SlashCommand editor={editor} onInsertImage={insertImage} />
+      <BacklinkSuggestion
+        editor={editor}
+        documents={documents}
+        onCreateNew={onCreateDocument}
+      />
       <EditorContent editor={editor} />
     </div>
   );

@@ -13,9 +13,11 @@ interface EditorPageProps {
   initialContent: string;
   title: string;
   initialSha?: string;
+  /** Available documents for backlink suggestions */
+  documents?: { slug: string; title: string }[];
 }
 
-export function EditorPage({ slug, initialContent, title, initialSha }: EditorPageProps) {
+export function EditorPage({ slug, initialContent, title, initialSha, documents = [] }: EditorPageProps) {
   const router = useRouter();
   const [hasChanges, setHasChanges] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -206,7 +208,12 @@ export function EditorPage({ slug, initialContent, title, initialSha }: EditorPa
       {/* Editor */}
       <main className="max-w-4xl mx-auto px-6 py-8">
         <div className="bg-background border border-border rounded-lg p-6">
-          <Editor content={content} onChange={handleChange} editable={true} />
+          <Editor
+            content={content}
+            onChange={handleChange}
+            editable={true}
+            documents={documents}
+          />
         </div>
       </main>
 

@@ -29,9 +29,12 @@ export default async function EditPage({ params }: PageProps) {
     notFound();
   }
 
-  // Get the raw content with frontmatter
-  // We need to reconstruct it since document.content is just the body
-  const { data: frontmatter } = matter(document.content);
+  // Get all documents for backlink suggestions
+  const allDocuments = await getAllDocuments();
+  const documentList = allDocuments.map((doc) => ({
+    slug: doc.slug,
+    title: doc.title,
+  }));
 
   // Reconstruct full content with frontmatter
   const fullContent = matter.stringify(document.content, document.frontmatter);
@@ -41,6 +44,7 @@ export default async function EditPage({ params }: PageProps) {
       slug={slugPath}
       initialContent={fullContent}
       title={document.title}
+      documents={documentList}
     />
   );
 }

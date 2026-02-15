@@ -7,6 +7,7 @@ import {
   getDocumentTree,
 } from "@/lib/content";
 import { parseMarkdown } from "@/lib/markdown";
+import { getBacklinksForDocument } from "@/lib/backlinks";
 
 interface PageProps {
   params: Promise<{
@@ -34,14 +35,21 @@ export default async function DocumentPage({ params }: PageProps) {
     notFound();
   }
 
-  // Parse the markdown content
-  const parsedDocument = await parseMarkdown(document.content);
-
   // Get document tree for sidebar
   const tree = await getDocumentTree();
 
-  // Get all documents to find child documents and extract tags
+  // Get all documents to find child documents, extract tags, and compute backlinks
   const allDocuments = await getAllDocuments();
+
+  // Create document list for backlink resolution
+  const docList = allDocuments.map((d) => ({ slug: d.slug, title: d.title }));
+
+  // Parse the markdown content with BBCode and backlink processing
+  const parsedDocument = await parseMarkdown(document.content, {
+    allDocs: docList,
+    processBBCode: true,
+    processBacklinks: true,
+  });
 
   // Find child documents (documents that start with current slug + /)
   const childDocs = allDocuments
@@ -58,12 +66,15 @@ export default async function DocumentPage({ params }: PageProps) {
     new Set(allDocuments.flatMap((doc) => doc.frontmatter.tags || []))
   );
 
+  // Compute backlinks for this document (which other docs link to this one)
+  const backlinks = getBacklinksForDocument(slugPath, allDocuments);
+
   return (
     <Shell
       tree={tree}
       tags={allTags}
       toc={parsedDocument.toc}
-      backlinks={[]}
+      backlinks={backlinks}
       showRightPanel={true}
     >
       <DocumentView document={parsedDocument} slug={slugPath} childDocs={childDocs} />
