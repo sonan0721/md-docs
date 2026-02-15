@@ -66,7 +66,7 @@ export default async function DocumentPage({ params }: PageProps) {
       backlinks={[]}
       showRightPanel={true}
     >
-      <DocumentView document={parsedDocument} childDocs={childDocs} />
+      <DocumentView document={parsedDocument} slug={slugPath} childDocs={childDocs} />
     </Shell>
   );
 }

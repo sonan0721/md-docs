@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import type { ParsedDocument } from "@/lib/markdown";
 
 interface ChildDoc {
@@ -8,19 +9,32 @@ interface ChildDoc {
 
 interface DocumentViewProps {
   document: ParsedDocument;
+  slug: string;
   childDocs?: ChildDoc[];
 }
 
-export function DocumentView({ document, childDocs = [] }: DocumentViewProps) {
+export function DocumentView({ document, slug, childDocs = [] }: DocumentViewProps) {
   const { frontmatter, html } = document;
 
   return (
     <article className="w-full">
       {/* Document Title */}
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-text mb-4">
-          {frontmatter.title}
-        </h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-3xl font-bold text-text mb-4">
+            {frontmatter.title}
+          </h1>
+
+          {/* Edit Button */}
+          <Link
+            href={`/edit/${slug}`}
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 text-sm text-muted hover:text-text bg-surface hover:bg-border rounded-md transition-colors"
+            title="Edit document"
+          >
+            <Pencil size={14} />
+            <span>Edit</span>
+          </Link>
+        </div>
 
         {/* Tags */}
         {frontmatter.tags && frontmatter.tags.length > 0 && (
