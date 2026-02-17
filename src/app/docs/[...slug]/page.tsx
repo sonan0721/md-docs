@@ -8,6 +8,7 @@ import {
 } from "@/lib/content";
 import { parseMarkdown } from "@/lib/markdown";
 import { getBacklinksForDocument } from "@/lib/backlinks";
+import { isDocumentPublic } from "@/lib/visibility";
 
 interface PageProps {
   params: Promise<{
@@ -69,6 +70,9 @@ export default async function DocumentPage({ params }: PageProps) {
   // Compute backlinks for this document (which other docs link to this one)
   const backlinks = getBacklinksForDocument(slugPath, allDocuments);
 
+  // Check document visibility
+  const isPublic = isDocumentPublic(document);
+
   return (
     <Shell
       tree={tree}
@@ -78,7 +82,12 @@ export default async function DocumentPage({ params }: PageProps) {
       showRightPanel={true}
       documents={allDocuments}
     >
-      <DocumentView document={parsedDocument} slug={slugPath} childDocs={childDocs} />
+      <DocumentView
+        document={parsedDocument}
+        slug={slugPath}
+        childDocs={childDocs}
+        isPublic={isPublic}
+      />
     </Shell>
   );
 }

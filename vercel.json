@@ -1,0 +1,21 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "GITHUB_CLIENT_ID": "@github-client-id",
+    "GITHUB_CLIENT_SECRET": "@github-client-secret",
+    "NEXTAUTH_SECRET": "@nextauth-secret"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ]
+}
